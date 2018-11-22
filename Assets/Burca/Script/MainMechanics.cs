@@ -6,142 +6,77 @@ using UnityEngine.SceneManagement;
 //                pulsar continuamente.
 public class MainMechanics : MonoBehaviour
 {
-    #region Class Treshold definition
-    [SerializeField]
-    public class Treshold
-    {
-        public float x;
-        public float y;
-
-        public Treshold() { }
-        public Treshold(float xValue, float yValue)
-        {
-            x = xValue;
-            y = yValue;
-        }
-    }
-    #endregion
-
     #region Class PossibleCombination definition
     [SerializeField]
     public class PossibleCombination
     {
+        public int type;
         public string swipe;
         public float rotation;
 
-        public PossibleCombination(string swipeValue, float rotationValue)
+        public PossibleCombination(int swipeType, string swipe, float rotation)
         {
-            swipe = swipeValue;
-            rotation = rotationValue;
-        }
-    }
-    #endregion
-
-    #region Class Swipes definition
-    [SerializeField]
-    public class Swipes
-    {
-        private bool right;
-        private bool left;
-        private bool up;
-        private bool down;
-        private bool horizontal;
-        private bool vertical;
-        public bool Right
-        {
-            get { return right; }
-            set { right = value; }
-        }
-        public bool Left
-        {
-            get { return left; }
-            set { left = value; }
-        }
-        public bool Up
-        {
-            get { return up; }
-            set { up = value; }
-        }
-        public bool Down
-        {
-            get { return down; }
-            set { down = value; }
-        }
-        public bool Horizontal
-        {
-            get { return horizontal; }
-            set { horizontal = value; }
-        }
-        public bool Vertical
-        {
-            get { return vertical; }
-            set { vertical = value; }
-        }
-
-        public Swipes(bool rightValue, bool leftValue, bool upValue, bool downValue, bool horizontalValue, bool verticalValue)
-        {
-            right = rightValue;
-            left = leftValue;
-            up = upValue;
-            down = downValue;
-            horizontal = horizontalValue;
-            vertical = verticalValue;
+            this.type = swipeType;
+            this.swipe = swipe;
+            this.rotation = rotation;
         }
     }
     #endregion
     
     #region Public Variables
-    public float timerInitialValue = 2.0f;
-    public float defaultAddTime = 0.80f;
+    public float timerInitialValue = 3;
+    public float defaultAddTime = 1;
     //////////////////////
     public SoundManager soundManager;
     ////////////////////////
     public Slider timer;
-    public Text swipeTextRef, pointsRef;
+    public Text swipeTextRef, pointsRef, highscoreRef;
     public Transform arrow;
-    public Treshold treshold = new Treshold(0.0f, 0.0f);
     #endregion
 
     #region Private Variables
-    private int points = 0;
+    private int points = 0, highscore = 0;
     private bool gameStarted = false;
-    private bool tap = false;
-    private string swipeDirection;
     private Animator arrowAnim;
-    private Vector3 beganInputPosition, finishedInputPosition;
-    private Swipes swipe = new Swipes(false, false, false, false, false, false);
-    private PossibleCombination[] combinations = new PossibleCombination[4] { new PossibleCombination("R", 0),
-                                                                             new PossibleCombination("L", 180),
-                                                                             new PossibleCombination("U", 90),
-                                                                             new PossibleCombination("D", 270)};
+    private PossibleCombination combination;
+    private PossibleCombination[] combinations = new PossibleCombination[4] { new PossibleCombination(2, "R", 0),
+                                                                             new PossibleCombination(4, "L", 180),
+                                                                             new PossibleCombination(1, "U", 90),
+                                                                             new PossibleCombination(3, "D", 270)};
+                                                                            //new PossibleCombination(5, "LD", 270),
+                                                                            //new PossibleCombination(7, "LU", 270),
+                                                                           //new PossibleCombination(4, "RU", 270),
+                                                                            //new PossibleCombination(6, "RD", 270)};
     #endregion
-
-    private void Awake()
-    {
-        Random.InitState((int)System.DateTime.Now.Ticks);
-    }
-
+    
     private void Start()
     {
+        Random.InitState((int)System.DateTime.Now.Ticks);
         Setup();
     }
 
     private void Setup()
     {
         points = 1;
+
+        highscore = PlayerPrefs.GetInt("highscore");
+        highscoreRef.text = "{" + highscore.ToString() + "}";
+
         arrowAnim = arrow.GetComponent<Animator>();
+
         timer.maxValue = timerInitialValue;
         //Arrumar
         soundManager = GameObject.Find("music").GetComponent<SoundManager>();
         //
         gameStarted = false;
+
         swipeTextRef.text = "R";
         arrow.rotation = Quaternion.Euler(0, 0, 0);
-        //ResetSwipes();
-    }
-    //Todo o codigo do swipe abaixo foi totalmente trocado por apenas essa função e o asset LeanTouch
 
-    public void Swipe(string direction)
+        combination = combinations[0];
+    }
+
+    public void Swipe(int direction)
     {
         if (!gameStarted)
         {
@@ -149,7 +84,7 @@ public class MainMechanics : MonoBehaviour
             gameStarted = true;
         }
 
-        if (swipeTextRef.text.Contains(direction))
+        if (combination.type == direction)
             SwipedRight();
         else
             SwipedWrong();
@@ -158,9 +93,12 @@ public class MainMechanics : MonoBehaviour
     private void SwipedRight()
     {
         points++;
+        CheckHighscore();
         pointsRef.text = "{" + points.ToString() + "}";
-        swipeTextRef.text = GenerateSwipeString().ToString();
-        arrow.rotation = GenerateArrowRotation();
+        highscoreRef.text = "{" + highscore.ToString() + "}";
+        combination = GenerateCombination();
+        swipeTextRef.text = combination.swipe;
+        arrow.rotation = Quaternion.Euler(new Vector3(0,0,combination.rotation));
         arrowAnim.Play("appear", 0, 0.0f);
         AddTime(defaultAddTime);
         ///ARRUMAR
@@ -175,18 +113,20 @@ public class MainMechanics : MonoBehaviour
         ///
         StartCoroutine(Restart(0.0f));
     }
-
-    private string GenerateSwipeString()
+    
+    private PossibleCombination GenerateCombination()
     {
-        float swipesLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
-        return combinations[Random.Range(0, (int)Mathf.Floor(swipesLog2Clamped))].swipe;
-    }
+        float swipesLog2Clamped = Mathf.Clamp(Mathf.FloorToInt(Mathf.Log(points, 2)) + 1, 0, combinations.Length);
+        Debug.Log("Log2: " + swipesLog2Clamped.ToString());
 
-    private Quaternion GenerateArrowRotation()
-    {
-        float rotationLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
-        Debug.Log("Points: " + points + "\nLog2Clamped: " + rotationLog2Clamped);
-        return Quaternion.Euler(0, 0, combinations[Random.Range(0, (int)Mathf.Floor(rotationLog2Clamped))].rotation);
+        int index1, index2;
+        index1 = Random.Range(0, (int)swipesLog2Clamped);
+        index2 = Random.Range(0, (int)swipesLog2Clamped);
+
+
+        PossibleCombination newCombination = new PossibleCombination(combinations[index1].type, combinations[index1].swipe, combinations[index2].rotation);
+        //print("Type: " + newCombination.type.ToString() + " Swipe: " + newCombination.swipe + " Rot: " + newCombination.rotation);
+        return newCombination;
     }
 
     private IEnumerator StartTimer()
@@ -197,8 +137,9 @@ public class MainMechanics : MonoBehaviour
             if (timer.value <= 0)
             {
                 //Arrumar
-                StartCoroutine(Restart(0.0f));
                 soundManager.PlayWrong();
+                //StartCoroutine(Restart(0.0f));
+                Restart();
                 //
             }
             yield return null;
@@ -207,95 +148,32 @@ public class MainMechanics : MonoBehaviour
 
     public IEnumerator Restart(float delay)
     {
+        PlayerPrefs.SetInt("highscore", highscore);
+        PlayerPrefs.Save();
         yield return new WaitForSeconds(delay);
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         yield return null;
     }
 
+    public void Restart()
+    {
+        PlayerPrefs.SetInt("highscore", highscore);
+        PlayerPrefs.Save();
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
     public void AddTime(float value)
     {
-        //timer.value = timerInitialValue;
         timer.value += value;
         timer.value = Mathf.Clamp(timer.value, 0.0f, timerInitialValue);
     }
 
-    /*private void OnMouseDown()
+    public void CheckHighscore()
     {
-        beganInputPosition = Input.mousePosition;
-        Debug.Log("Initial Position: " + beganInputPosition);
-    }
-
-    private void OnMouseUp()
-    {
-        if(!gameStarted)
+        if(points > highscore)
         {
-            StartCoroutine(StartTimer());
-            gameStarted = true;
-        }
-        finishedInputPosition = Input.mousePosition;
-        Debug.Log("Final Position: " + finishedInputPosition);
-        swipeDirection = CalculateSwipe(beganInputPosition, finishedInputPosition);
-        Debug.Log(swipeDirection);
-        ResetSwipes();
-        if (swipeTextRef.text.Contains(swipeDirection))
-            SwipedRight();
-        else
-            SwapedWrong();
-    }*/
-
-    /*private string CalculateSwipe(Vector3 inicial, Vector3 final)
-    {
-        string returnStringHorizontal = "";
-        string returnStringVertical = "";
-        if (Mathf.Abs(inicial.x - final.x) >= treshold.x * 9)
-        {
-            swipe.Horizontal = true;
-            if (final.x > inicial.x)
-            {
-                //Debug.Log("swipedLeft");
-                returnStringHorizontal = "Right";
-                swipe.Right = true;
-            }
-            else
-            {
-                //Debug.Log("SwipedRight");
-                returnStringHorizontal = "Left";
-                swipe.Left = true;
-            }
-        }
-        if (Mathf.Abs(inicial.y - final.y) >= treshold.y * 16)
-        {
-            swipe.Vertical = true;
-            if (final.y > inicial.y)
-            {
-                //Debug.Log("swipedDown");
-                returnStringVertical = "Up";
-                swipe.Up = true;
-            }
-            else
-            {
-                //Debug.Log("swipedUp");
-                returnStringVertical = "Down";
-                swipe.Down = true;
-            }
-        }
-        if (Mathf.Abs(inicial.x - final.x) > Mathf.Abs(inicial.y - final.y))
-        {
-            return returnStringHorizontal;
-        }
-        else
-        {
-            return returnStringVertical;
+            highscore = points;
+            highscoreRef.text = "{" + highscore.ToString() + "}";
         }
     }
-
-    private void ResetSwipes()
-    {
-        swipe.Left = false;
-        swipe.Right = false;
-        swipe.Up = false;
-        swipe.Down = false;
-        swipe.Horizontal = false;
-        swipe.Vertical = false;
-    }*/
 }

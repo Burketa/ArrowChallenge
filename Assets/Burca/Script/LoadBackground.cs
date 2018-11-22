@@ -14,7 +14,6 @@ public class LoadBackground : MonoBehaviour
 	void Start ()
     {
         int index = Random.Range(0, combinations.Length);
-        Debug.Log("Index: " + index);
 
         var ps_back = transform.GetChild(1).GetComponent<ParticleSystemRenderer>();
         var ps_front = transform.GetChild(2).GetComponent<ParticleSystemRenderer>();
