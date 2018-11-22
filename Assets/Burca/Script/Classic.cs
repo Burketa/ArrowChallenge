@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
-
+//TODO: etapas -> deixar o arrow anterior por 1 movimento, colocar um tap ao inves de swipe, colocar mais direções como um *, arrow e texto começam a se mover
+//                pulsar continuamente.
 public class Classic : MonoBehaviour
 {
     #region Class Treshold definition
@@ -87,7 +88,7 @@ public class Classic : MonoBehaviour
         }
     }
     #endregion
-
+    
     #region Public Variables
     public float timerInitialValue = 2.0f;
     public float defaultAddTime = 0.80f;
@@ -114,17 +115,17 @@ public class Classic : MonoBehaviour
                                                                              new PossibleCombination("Down", 270)};
     #endregion
 
-    void Awake()
+    private void Awake()
     {
         Random.seed = (int)System.DateTime.Now.Ticks;
     }
 
-    void Start()
+    private void Start()
     {
         Setup();
     }
 
-    void Setup()
+    private void Setup()
     {
         points = 1;
         arrowAnim = arrow.GetComponent<Animator>();
@@ -133,18 +134,91 @@ public class Classic : MonoBehaviour
         musicNSound = GameObject.Find("music").GetComponent<PlayAudios>();
         //
         gameStarted = false;
-        swipeTextRef.text = "Swipe Right";
+        swipeTextRef.text = "Right";
         arrow.rotation = Quaternion.Euler(0, 0, 0);
-        ResetSwipes();
+        //ResetSwipes();
+    }
+    //Todo o codigo do swipe abaixo foi totalmente trocado por apenas essa função e o asset LeanTouch
+
+    public void Swipe(string direction)
+    {
+        if (swipeTextRef.text.Contains(direction))
+            SwipedRight();
+        else
+            SwipedWrong();
     }
 
-    void OnMouseDown()
+    private void SwipedRight()
+    {
+        points++;
+        pointsRef.text = "{" + points.ToString() + "}";
+        swipeTextRef.text = GenerateSwipeString().ToString();
+        arrow.rotation = GenerateArrowRotation();
+        arrowAnim.Play("appear", 0, 0.0f);
+        AddTime(defaultAddTime);
+        ///ARRUMAR
+        musicNSound.PlayRight();
+        ///
+    }
+
+    private void SwipedWrong()
+    {
+        ///ARRUMAR
+        musicNSound.PlayWrong();
+        ///
+        StartCoroutine(Restart(0.0f));
+    }
+
+    private string GenerateSwipeString()
+    {
+        float swipesLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
+        return combinations[Random.Range(0, (int)Mathf.Floor(swipesLog2Clamped))].swipe;
+    }
+
+    private Quaternion GenerateArrowRotation()
+    {
+        float rotationLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
+        Debug.Log("Points: " + points + "\nLog2Clamped: " + rotationLog2Clamped);
+        return Quaternion.Euler(0, 0, combinations[Random.Range(0, (int)Mathf.Floor(rotationLog2Clamped))].rotation);
+    }
+
+    private IEnumerator StartTimer()
+    {
+        while (true)
+        {
+            timer.value -= Time.deltaTime;
+            if (timer.value <= 0)
+            {
+                //Arrumar
+                StartCoroutine(Restart(0.0f));
+                musicNSound.PlayWrong();
+                //
+            }
+            yield return null;
+        }
+    }
+
+    public IEnumerator Restart(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        Application.LoadLevel(Application.loadedLevel);
+        yield return null;
+    }
+
+    public void AddTime(float value)
+    {
+        //timer.value = timerInitialValue;
+        timer.value += value;
+        timer.value = Mathf.Clamp(timer.value, 0.0f, timerInitialValue);
+    }
+
+    /*private void OnMouseDown()
     {
         beganInputPosition = Input.mousePosition;
         Debug.Log("Initial Position: " + beganInputPosition);
     }
 
-    void OnMouseUp()
+    private void OnMouseUp()
     {
         if(!gameStarted)
         {
@@ -157,36 +231,12 @@ public class Classic : MonoBehaviour
         Debug.Log(swipeDirection);
         ResetSwipes();
         if (swipeTextRef.text.Contains(swipeDirection))
-        {
             SwipedRight();
-        }
         else
-        {
             SwapedWrong();
-        }
-    }
+    }*/
 
-    void SwipedRight()
-    {
-        points++;
-        pointsRef.text = "{" + points.ToString() + "}";
-        swipeTextRef.text = "Swipe " + GenerateSwipe();
-        arrow.rotation = GenerateRotation();
-        arrowAnim.Play("appear", 0, 0.0f);
-        AddTime(defaultAddTime);
-        ///ARRUMAR
-        musicNSound.PlayRight();
-        ///
-    }
-    void SwapedWrong()
-    {
-        ///ARRUMAR
-        musicNSound.PlayWrong();
-        ///
-        StartCoroutine(Restart(0.0f));
-    }
-
-    string CalculateSwipe(Vector3 inicial, Vector3 final)
+    /*private string CalculateSwipe(Vector3 inicial, Vector3 final)
     {
         string returnStringHorizontal = "";
         string returnStringVertical = "";
@@ -232,7 +282,7 @@ public class Classic : MonoBehaviour
         }
     }
 
-    void ResetSwipes()
+    private void ResetSwipes()
     {
         swipe.Left = false;
         swipe.Right = false;
@@ -240,48 +290,5 @@ public class Classic : MonoBehaviour
         swipe.Down = false;
         swipe.Horizontal = false;
         swipe.Vertical = false;
-    }
-
-    string GenerateSwipe()
-    {
-        float swipesLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
-        return combinations[Random.Range(0, (int)Mathf.Floor(swipesLog2Clamped))].swipe;
-    }
-
-    Quaternion GenerateRotation()
-    {
-        float rotationLog2Clamped = Mathf.Clamp(Mathf.Log(points, 2) + 1, 0, combinations.Length);
-        Debug.Log("Points: " + points + "\nLog2Clamped: " + rotationLog2Clamped);
-        return Quaternion.Euler(0, 0, combinations[Random.Range(0, (int)Mathf.Floor(rotationLog2Clamped))].rotation);
-    }
-
-    public IEnumerator StartTimer()
-    {
-        while (true)
-        {
-            timer.value -= Time.deltaTime;
-            if (timer.value <= 0)
-            {
-                //Arrumar
-                StartCoroutine(Restart(0.0f));
-                musicNSound.PlayWrong();
-                //
-            }
-            yield return null;
-        }
-    }
-
-    public IEnumerator Restart(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        Application.LoadLevel(Application.loadedLevel);
-        yield return null;
-    }
-
-    public void AddTime(float value)
-    {
-        //timer.value = timerInitialValue;
-        timer.value += value;
-        timer.value = Mathf.Clamp(timer.value, 0.0f, timerInitialValue);
-    }
+    }*/
 }
