@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class PlayAudios : MonoBehaviour {
+public class SoundManager : MonoBehaviour {
 
-    private static PlayAudios instance;
+    private static SoundManager instance;
 
     public AudioSource music, sounds;
     public AudioClip right, wrong;

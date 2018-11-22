@@ -1,9 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 //TODO: etapas -> deixar o arrow anterior por 1 movimento, colocar um tap ao inves de swipe, colocar mais direções como um *, arrow e texto começam a se mover
 //                pulsar continuamente.
-public class Classic : MonoBehaviour
+public class MainMechanics : MonoBehaviour
 {
     #region Class Treshold definition
     [SerializeField]
@@ -93,7 +94,7 @@ public class Classic : MonoBehaviour
     public float timerInitialValue = 2.0f;
     public float defaultAddTime = 0.80f;
     //////////////////////
-    public PlayAudios musicNSound;
+    public SoundManager soundManager;
     ////////////////////////
     public Slider timer;
     public Text swipeTextRef, pointsRef;
@@ -109,15 +110,15 @@ public class Classic : MonoBehaviour
     private Animator arrowAnim;
     private Vector3 beganInputPosition, finishedInputPosition;
     private Swipes swipe = new Swipes(false, false, false, false, false, false);
-    private PossibleCombination[] combinations = new PossibleCombination[4] { new PossibleCombination("Right", 0),
-                                                                             new PossibleCombination("Left", 180),
-                                                                             new PossibleCombination("Up", 90),
-                                                                             new PossibleCombination("Down", 270)};
+    private PossibleCombination[] combinations = new PossibleCombination[4] { new PossibleCombination("R", 0),
+                                                                             new PossibleCombination("L", 180),
+                                                                             new PossibleCombination("U", 90),
+                                                                             new PossibleCombination("D", 270)};
     #endregion
 
     private void Awake()
     {
-        Random.seed = (int)System.DateTime.Now.Ticks;
+        Random.InitState((int)System.DateTime.Now.Ticks);
     }
 
     private void Start()
@@ -131,10 +132,10 @@ public class Classic : MonoBehaviour
         arrowAnim = arrow.GetComponent<Animator>();
         timer.maxValue = timerInitialValue;
         //Arrumar
-        musicNSound = GameObject.Find("music").GetComponent<PlayAudios>();
+        soundManager = GameObject.Find("music").GetComponent<SoundManager>();
         //
         gameStarted = false;
-        swipeTextRef.text = "Right";
+        swipeTextRef.text = "R";
         arrow.rotation = Quaternion.Euler(0, 0, 0);
         //ResetSwipes();
     }
@@ -142,6 +143,12 @@ public class Classic : MonoBehaviour
 
     public void Swipe(string direction)
     {
+        if (!gameStarted)
+        {
+            StartCoroutine(StartTimer());
+            gameStarted = true;
+        }
+
         if (swipeTextRef.text.Contains(direction))
             SwipedRight();
         else
@@ -157,14 +164,14 @@ public class Classic : MonoBehaviour
         arrowAnim.Play("appear", 0, 0.0f);
         AddTime(defaultAddTime);
         ///ARRUMAR
-        musicNSound.PlayRight();
+        soundManager.PlayRight();
         ///
     }
 
     private void SwipedWrong()
     {
         ///ARRUMAR
-        musicNSound.PlayWrong();
+        soundManager.PlayWrong();
         ///
         StartCoroutine(Restart(0.0f));
     }
@@ -191,7 +198,7 @@ public class Classic : MonoBehaviour
             {
                 //Arrumar
                 StartCoroutine(Restart(0.0f));
-                musicNSound.PlayWrong();
+                soundManager.PlayWrong();
                 //
             }
             yield return null;
@@ -201,7 +208,7 @@ public class Classic : MonoBehaviour
     public IEnumerator Restart(float delay)
     {
         yield return new WaitForSeconds(delay);
-        Application.LoadLevel(Application.loadedLevel);
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         yield return null;
     }
 
