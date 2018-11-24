@@ -26,9 +26,6 @@ public class MainMechanics : MonoBehaviour
     #region Public Variables
     public float timerInitialValue = 3;
     public float defaultAddTime = 1;
-    //////////////////////
-    public SoundManager soundManager;
-    ////////////////////////
     public Slider timer;
     public Text swipeTextRef, pointsRef, highscoreRef;
     public Transform arrow;
@@ -45,10 +42,12 @@ public class MainMechanics : MonoBehaviour
                                                                              new PossibleCombination(3, "D", 270)};
                                                                             //new PossibleCombination(5, "LD", 270),
                                                                             //new PossibleCombination(7, "LU", 270),
-                                                                           //new PossibleCombination(4, "RU", 270),
+                                                                            //new PossibleCombination(4, "RU", 270),
                                                                             //new PossibleCombination(6, "RD", 270)};
+
+    public SoundManager soundManager;
     #endregion
-    
+
     private void Start()
     {
         Random.InitState((int)System.DateTime.Now.Ticks);
@@ -57,6 +56,8 @@ public class MainMechanics : MonoBehaviour
 
     private void Setup()
     {
+        gameStarted = false;
+
         points = 1;
 
         highscore = PlayerPrefs.GetInt("highscore");
@@ -64,13 +65,12 @@ public class MainMechanics : MonoBehaviour
 
         arrowAnim = arrow.GetComponent<Animator>();
 
+        soundManager = FindObjectOfType<SoundManager>();
+
         timer.maxValue = timerInitialValue;
-        //Arrumar
-        soundManager = GameObject.Find("music").GetComponent<SoundManager>();
-        //
-        gameStarted = false;
 
         swipeTextRef.text = "R";
+
         arrow.rotation = Quaternion.Euler(0, 0, 0);
 
         combination = combinations[0];
@@ -165,6 +165,7 @@ public class MainMechanics : MonoBehaviour
     public void AddTime(float value)
     {
         timer.value += value;
+        UpdateTimerWidth();
         timer.value = Mathf.Clamp(timer.value, 0.0f, timerInitialValue);
     }
 
@@ -174,6 +175,18 @@ public class MainMechanics : MonoBehaviour
         {
             highscore = points;
             highscoreRef.text = "{" + highscore.ToString() + "}";
+        }
+    }
+
+    public void UpdateTimerWidth()
+    {
+        var rectTransform = timer.GetComponent<RectTransform>();    //sizeDelta.x = Width; sizeDelta.y = Height;
+        var timerShadow = timer.transform.GetChild(0).GetComponent<RectTransform>();
+
+        if(rectTransform.sizeDelta.x > 300)
+        {
+            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x - 50, rectTransform.sizeDelta.y);
+            timerShadow.sizeDelta = new Vector2(timerShadow.sizeDelta.x - 50, timerShadow.sizeDelta.y);
         }
     }
 }
