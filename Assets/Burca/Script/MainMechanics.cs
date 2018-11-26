@@ -24,11 +24,11 @@ public class MainMechanics : MonoBehaviour
     #endregion
     
     #region Public Variables
-    public float timerInitialValue = 3;
-    public float defaultAddTime = 1;
-    public Slider timer;
+
     public Text swipeTextRef, pointsRef, highscoreRef;
     public Transform arrow;
+    public Timer timer;
+
     #endregion
 
     #region Private Variables
@@ -67,7 +67,7 @@ public class MainMechanics : MonoBehaviour
 
         soundManager = FindObjectOfType<SoundManager>();
 
-        timer.maxValue = timerInitialValue;
+        //timer.ResetTimer();
 
         swipeTextRef.text = "R";
 
@@ -80,7 +80,7 @@ public class MainMechanics : MonoBehaviour
     {
         if (!gameStarted)
         {
-            StartCoroutine(StartTimer());
+            StartCoroutine(timer.StartTimer());
             gameStarted = true;
         }
 
@@ -100,24 +100,19 @@ public class MainMechanics : MonoBehaviour
         swipeTextRef.text = combination.swipe;
         arrow.rotation = Quaternion.Euler(new Vector3(0,0,combination.rotation));
         arrowAnim.Play("appear", 0, 0.0f);
-        AddTime(defaultAddTime);
-        ///ARRUMAR
+        timer.AddTime();
         soundManager.PlayRight();
-        ///
     }
 
     private void SwipedWrong()
     {
-        ///ARRUMAR
-        soundManager.PlayWrong();
-        ///
-        StartCoroutine(Restart(0.0f));
+        GameOver();
     }
     
     private PossibleCombination GenerateCombination()
     {
         float swipesLog2Clamped = Mathf.Clamp(Mathf.FloorToInt(Mathf.Log(points, 2)) + 1, 0, combinations.Length);
-        Debug.Log("Log2: " + swipesLog2Clamped.ToString());
+        //Debug.Log("Log2: " + swipesLog2Clamped.ToString());
 
         int index1, index2;
         index1 = Random.Range(0, (int)swipesLog2Clamped);
@@ -128,24 +123,7 @@ public class MainMechanics : MonoBehaviour
         //print("Type: " + newCombination.type.ToString() + " Swipe: " + newCombination.swipe + " Rot: " + newCombination.rotation);
         return newCombination;
     }
-
-    private IEnumerator StartTimer()
-    {
-        while (true)
-        {
-            timer.value -= Time.deltaTime;
-            if (timer.value <= 0)
-            {
-                //Arrumar
-                soundManager.PlayWrong();
-                //StartCoroutine(Restart(0.0f));
-                Restart();
-                //
-            }
-            yield return null;
-        }
-    }
-
+    
     public IEnumerator Restart(float delay)
     {
         PlayerPrefs.SetInt("highscore", highscore);
@@ -161,14 +139,7 @@ public class MainMechanics : MonoBehaviour
         PlayerPrefs.Save();
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
-
-    public void AddTime(float value)
-    {
-        timer.value += value;
-        UpdateTimerWidth();
-        timer.value = Mathf.Clamp(timer.value, 0.0f, timerInitialValue);
-    }
-
+    
     public void CheckHighscore()
     {
         if(points > highscore)
@@ -178,15 +149,9 @@ public class MainMechanics : MonoBehaviour
         }
     }
 
-    public void UpdateTimerWidth()
+    public void GameOver()
     {
-        var rectTransform = timer.GetComponent<RectTransform>();    //sizeDelta.x = Width; sizeDelta.y = Height;
-        var timerShadow = timer.transform.GetChild(0).GetComponent<RectTransform>();
-
-        if(rectTransform.sizeDelta.x > 300)
-        {
-            rectTransform.sizeDelta = new Vector2(rectTransform.sizeDelta.x - 50, rectTransform.sizeDelta.y);
-            timerShadow.sizeDelta = new Vector2(timerShadow.sizeDelta.x - 50, timerShadow.sizeDelta.y);
-        }
+        soundManager.PlayWrong();
+        Restart();
     }
 }
